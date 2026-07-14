@@ -1,17 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Photo Cropper Pro</title>
-    <script>
-        // Check theme immediately to prevent FOUC. Default to light.
-        if (localStorage.getItem('theme') === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    </script>
+    <title>Batch Photo Cropper - Pro</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -20,44 +12,44 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Outfit', 'sans-serif'],
+                        sans: ['Space Grotesk', 'sans-serif'],
                     },
                     colors: {
-                        // Stone replacing Slate (Warm Grays)
+                        // Cyberpunk Deep Dark Backgrounds
                         slate: {
-                            50: '#fafaf9',
-                            100: '#f5f5f4',
-                            200: '#e7e5e4',
-                            300: '#d6d3d1',
-                            400: '#a8a29e',
-                            500: '#78716c',
-                            600: '#57534e',
-                            700: '#44403c',
-                            800: '#292524',
-                            900: '#1c1917',
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#0f172a',  // Very deep navy/black
+                            900: '#020617',  // Pitch black
                         },
-                        // Orange replacing Indigo
+                        // Fuchsia (Primary)
                         indigo: {
-                            200: '#fed7aa',
-                            300: '#fdba74',
-                            400: '#fb923c',
-                            500: '#f97316',
-                            600: '#ea580c',
-                            700: '#c2410c',
+                            200: '#f5d0fe',
+                            300: '#f0abfc',
+                            400: '#e879f9',
+                            500: '#d946ef', // Main Pink
+                            600: '#c026d3',
+                            700: '#a21caf',
                         },
-                        // Rose replacing Purple
+                        // Cyan (Secondary)
                         purple: {
-                            400: '#fb7185',
-                            500: '#f43f5e',
-                            600: '#e11d48',
+                            400: '#22d3ee',
+                            500: '#06b6d4', // Main Cyan
+                            600: '#0891b2',
                         },
                         gray: {
-                            300: '#d6d3d1',
-                            400: '#a8a29e',
-                            500: '#78716c',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
                         },
-                        primary: '#f97316',
-                        secondary: '#f43f5e',
+                        primary: '#d946ef',
+                        secondary: '#06b6d4',
                         darkBg: '#083344',
                         glassBg: 'rgba(22, 78, 99, 0.7)',
                         glassBorder: 'rgba(103, 232, 249, 0.15)'
@@ -76,27 +68,28 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-        :root {
-            --bg-color: #fafaf9;
-            --bg-gradient: linear-gradient(135deg, #ffedd5 0%, #fff1f2 100%);
-            --text-color: #1c1917;
-            --glassBg: rgba(255, 255, 255, 0.75);
-            --glassBorder: rgba(249, 115, 22, 0.1);
-            --shadow-color: rgba(249, 115, 22, 0.05);
-            --preloader-bg: #fafaf9;
+                :root {
+            /* Fallbacks (mostly ignored since locked to dark mode) */
+            --bg-color: #020617;
+            --bg-gradient: linear-gradient(135deg, #1e1b4b 0%, #020617 100%);
+            --text-color: #f8fafc;
+            --glassBg: rgba(2, 6, 23, 0.85);
+            --glassBorder: rgba(217, 70, 239, 0.3);
+            --shadow-color: rgba(217, 70, 239, 0.2);
+            --preloader-bg: #020617;
         }
 
         .dark {
-            --bg-color: #1c1917;
-            --bg-gradient: linear-gradient(135deg, #292524 0%, #1c1917 100%);
-            --text-color: #fafaf9;
-            --glassBg: rgba(41, 37, 36, 0.8);
-            --glassBorder: rgba(249, 115, 22, 0.15);
-            --shadow-color: rgba(0, 0, 0, 0.5);
-            --preloader-bg: #1c1917;
+            --bg-color: #020617;
+            --bg-gradient: linear-gradient(135deg, #1e1b4b 0%, #020617 100%);
+            --text-color: #f8fafc;
+            --glassBg: rgba(2, 6, 23, 0.85);
+            --glassBorder: rgba(217, 70, 239, 0.3); /* Neon Pink Border */
+            --shadow-color: rgba(6, 182, 212, 0.2); /* Neon Cyan Shadow */
+            --preloader-bg: #020617;
         }
 
         body {
@@ -169,11 +162,11 @@
         }
         
         /* Light mode orbs are softer */
-        .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; max-width: 600px; max-height: 600px; background: rgba(249, 115, 22, 0.08); animation-delay: 0s; }
-        .orb-2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; max-width: 500px; max-height: 500px; background: rgba(244, 63, 94, 0.08); animation-delay: -5s; }
+        .orb-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; max-width: 600px; max-height: 600px; background: rgba(217, 70, 239, 0.25); filter: blur(120px); animation-delay: 0s; }
+        .orb-2 { bottom: -10%; right: -10%; width: 40vw; height: 40vw; max-width: 500px; max-height: 500px; background: rgba(6, 182, 212, 0.25); filter: blur(100px); animation-delay: -5s; }
         
-        .dark .orb-1 { background: rgba(249, 115, 22, 0.15); }
-        .dark .orb-2 { background: rgba(244, 63, 94, 0.15); }
+        .dark .orb-1 { background: rgba(217, 70, 239, 0.35); }
+        .dark .orb-2 { background: rgba(6, 182, 212, 0.35); }
         
         /* Preloader */
         #preloader {
@@ -194,11 +187,12 @@
         .loader-ring {
             width: 80px;
             height: 80px;
-            border: 3px solid rgba(249, 115, 22, 0.1);
-            border-top-color: #f43f5e;
-            border-left-color: #f97316;
+            border: 3px solid rgba(217, 70, 239, 0.1);
+            border-top-color: #d946ef;
+            border-left-color: #06b6d4;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            box-shadow: 0 0 15px rgba(217, 70, 239, 0.5), inset 0 0 15px rgba(6, 182, 212, 0.5);
         }
     </style>
 </head>
@@ -231,12 +225,7 @@
                 Cropper Pro
             </h1>
             <div class="flex items-center gap-4">
-                <button id="theme-toggle" class="p-2 rounded-full bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-indigo-200 border border-slate-300 dark:border-white/5 hover:bg-slate-300 dark:hover:bg-white/20 transition-all active:scale-95" title="Toggle Light/Dark Mode">
-                    <!-- Sun Icon (shown in dark mode) -->
-                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4.22 2.32a1 1 0 011.415 0l.708.707a1 1 0 01-1.414 1.415l-.708-.707a1 1 0 010-1.415zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zm-3.364 4.95l.707.707a1 1 0 11-1.414 1.414l-.707-.707a1 1 0 011.414-1.414zM10 18a1 1 0 01-1-1v-1a1 1 0 112 0v1a1 1 0 01-1 1zm-4.95-3.364a1 1 0 010-1.414l.707-.707a1 1 0 011.414 1.414l-.707.707a1 1 0 01-1.414 0zM3 10a1 1 0 011-1h1a1 1 0 110 2H4a1 1 0 01-1-1zm2.32-4.22a1 1 0 010-1.415l.707-.707a1 1 0 011.414 1.415l-.707.707a1 1 0 01-1.414 0zM10 6a4 4 0 100 8 4 4 0 000-8z"></path></svg>
-                    <!-- Moon Icon (shown in light mode) -->
-                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
-                </button>
+                
                 <div id="header-status" class="text-sm font-medium px-4 py-1.5 rounded-full bg-slate-200 dark:bg-white/10 text-indigo-500 dark:text-indigo-200 border border-slate-300 dark:border-white/5">Step 1: Project Setup</div>
             </div>
         </div>
@@ -290,7 +279,7 @@
                     </label>
                 </div>
                 
-                <button id="start-btn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed text-lg tracking-wide disabled:shadow-none disabled:active:scale-100" disabled>
+                <button id="start-btn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(217,70,239,0.5)] disabled:opacity-50 disabled:cursor-not-allowed text-lg tracking-wide disabled:shadow-none disabled:active:scale-100" disabled>
                     Upload Photos to Begin
                 </button>
             </div>
