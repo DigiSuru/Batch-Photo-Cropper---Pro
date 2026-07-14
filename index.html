@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Photo Cropper Pro</title>
     <script>
-        // Check theme immediately to prevent FOUC
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        // Check theme immediately to prevent FOUC. Default to light.
+        if (localStorage.getItem('theme') === 'dark') {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
@@ -290,7 +290,7 @@
                     </label>
                 </div>
                 
-                <button id="start-btn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-slate-900 dark:text-white font-bold py-4 px-6 rounded-xl transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed text-lg tracking-wide disabled:shadow-none disabled:active:scale-100" disabled>
+                <button id="start-btn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-4 px-6 rounded-xl transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed text-lg tracking-wide disabled:shadow-none disabled:active:scale-100" disabled>
                     Upload Photos to Begin
                 </button>
             </div>
@@ -336,7 +336,7 @@
                     <!-- Cropper Canvas Box -->
                     <div class="flex-1 bg-black/40 rounded-lg overflow-hidden relative flex items-center justify-center border border-slate-100 dark:border-white/5">
                         <img id="image-to-crop" src="" alt="Picture to crop" class="max-h-full max-w-full hidden" style="display: block; max-width: 100%;">
-                        <div id="loading-indicator" class="absolute inset-0 flex flex-col gap-3 items-center justify-center text-slate-900 dark:text-white bg-black/80 backdrop-blur-sm z-10 hidden">
+                        <div id="loading-indicator" class="absolute inset-0 flex flex-col gap-3 items-center justify-center text-white bg-black/80 backdrop-blur-sm z-10 hidden">
                             <div class="spinner"></div>
                             <span class="text-sm font-medium tracking-wide">Loading Image...</span>
                         </div>
@@ -446,11 +446,11 @@
                         <button id="btn-skip" class="px-5 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white rounded-xl transition-all font-medium text-center order-2 sm:order-1 flex items-center justify-center gap-1">
                             Skip <span class="text-[10px] opacity-40 font-mono bg-slate-200 dark:bg-white/10 px-1 rounded hidden sm:inline ml-1">S</span>
                         </button>
-                        <button id="btn-crop-next" class="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-95 text-slate-900 dark:text-white rounded-xl transition-all font-bold shadow-lg flex items-center justify-center gap-2 text-lg order-1 sm:order-2">
+                        <button id="btn-crop-next" class="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-95 text-white rounded-xl transition-all font-bold shadow-lg flex items-center justify-center gap-2 text-lg order-1 sm:order-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
                             Crop & Next <span class="text-[10px] font-normal opacity-50 font-mono bg-black/20 px-1.5 py-0.5 rounded hidden sm:inline ml-1">↵</span>
                         </button>
-                        <button id="btn-finish-early" class="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-slate-900 dark:text-white rounded-xl transition-all font-medium text-center order-3" title="Finish and export now">
+                        <button id="btn-finish-early" class="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl transition-all font-medium text-center order-3" title="Finish and export now">
                             Finish
                         </button>
                     </div>
@@ -484,7 +484,7 @@
                 <h2 class="text-4xl font-bold mb-3 text-slate-900 dark:text-white">Export Ready!</h2>
                 <p class="text-slate-700 dark:text-gray-300 text-lg mb-8" id="done-text">Successfully processed <span class="text-slate-900 dark:text-white font-bold" id="done-count">0</span> images.</p>
                 
-                <button id="btn-download-zip" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-900 dark:text-white font-bold py-4 px-10 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center gap-3 text-xl mb-4 disabled:opacity-50 disabled:hover:-translate-y-0 disabled:active:scale-100">
+                <button id="btn-download-zip" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold py-4 px-10 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center gap-3 text-xl mb-4 disabled:opacity-50 disabled:hover:-translate-y-0 disabled:active:scale-100">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
