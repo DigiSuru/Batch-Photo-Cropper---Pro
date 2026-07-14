@@ -316,7 +316,7 @@
             </div>
 
             <!-- SEO Text Section: Appears only on Setup Screen to boost Search visibility without cluttering crop workflow -->
-            <div class="max-w-4xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-600 w-full">
+            <div id="seo-features" class="max-w-4xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-slate-600 w-full">
                 <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                     <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">🛡️ 100% Local & Secure</h3>
                     <p class="text-xs leading-relaxed">CropSwift Pro processes all your images locally in your web browser. Your private photos are never uploaded to any server, ensuring complete confidentiality.</p>
@@ -795,6 +795,15 @@
         function switchScreen(screenName) {
             Object.values(screens).forEach(s => s.classList.add('hidden'));
             screens[screenName].classList.remove('hidden');
+            
+            const seoFeatures = document.getElementById('seo-features');
+            if (seoFeatures) {
+                if (screenName === 'setup') {
+                    seoFeatures.classList.remove('hidden');
+                } else {
+                    seoFeatures.classList.add('hidden');
+                }
+            }
         }
 
         // Apply visual CSS filters to cropper
