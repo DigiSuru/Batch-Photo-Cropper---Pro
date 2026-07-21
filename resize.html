@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Primary SEO Meta Tags -->
+    <title>CropSwift Pro - Bulk Image Resizer & Compressor</title>
+    <meta name="title" content="CropSwift Pro - Bulk Image Resizer & Compressor">
+    <meta name="description" content="Compress and resize images to an exact file size (KB/MB) for free. Perfect for meeting strict upload size limits instantly in your browser. 100% secure, offline processing.">
+    <meta name="keywords" content="bulk crop, batch crop, image cropper, crop photos, crop multiple images, online image resizer, passport photo cropper, crop profile picture, free image cropper, CropSwift Pro">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta name="author" content="SK Meghwal">
+
+    <!-- Open Graph / Facebook Social SEO -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://github.com/DigiSuru/Batch-Photo-Cropper---Pro">
+    <meta property="og:title" content="CropSwift Pro - Bulk Image Resizer & Compressor">
+    <meta property="og:description" content="Crop multiple images at once for free with CropSwift Pro. Batch crop photos to exact dimensions or preset aspect ratios instantly in your browser.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/DigiSuru/Batch-Photo-Cropper---Pro/main/preview.png">
+
+    <!-- Twitter Card SEO -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://github.com/DigiSuru/Batch-Photo-Cropper---Pro">
+    <meta property="twitter:title" content="CropSwift Pro - Bulk Image Resizer & Compressor">
+    <meta property="twitter:description" content="Crop multiple images at once for free with CropSwift Pro. Batch crop photos to exact dimensions or preset aspect ratios instantly in your browser.">
+    <meta property="twitter:image" content="https://raw.githubusercontent.com/DigiSuru/Batch-Photo-Cropper---Pro/main/preview.png">
+
+    <!-- JSON-LD WebApplication Structured Data Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "CropSwift Pro",
+      "url": "https://github.com/DigiSuru/Batch-Photo-Cropper---Pro",
+      "description": "Free online batch image cropping utility. Crop multiple photos simultaneously with custom pixel sizes or popular presets.",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        // --- State ---
+        let filesList = []; 
+        let processedResults = []; 
+        let isProcessing = false;
+        let isCancelled = false;
+
+        // --- DOM Elements ---
+        const screens = {
+            setup: document.getElementById('screen-setup'),
+            processor: document.getElementById('screen-processor')
+        };
+        const headerStatus = document.getElementById('header-status');
+        
+        // Setup Elements
+        const fileInput = document.getElementById('file-upload');
+        const startBtn = document.getElementById('start-btn');
+        const targetSizeInput = document.getElementById('target-size');
+        const sizeUnitInput = document.getElementById('size-unit');
+        const allowDownscaleInput = document.getElementById('allow-downscale');
+
+        // Processor Elements
+        const processList = document.getElementById('process-list');
+        const queueCounter = document.getElementById('queue-counter');
+        const btnCancel = document.getElementById('btn-cancel');
+        const btnDownloadZip = document.getElementById('btn-download-zip');
+        const btnRestart = document.getElementById('btn-restart');
+        const totalSavedText = document.getElementById('total-saved');
+        const zipLoadingText = document.getElementById('zip-loading-text');
+        
+        function switchScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+            
+            const seoFeatures = document.getElementById('seo-features');
+            if (seoFeatures) {
+                if (screenName === 'setup') {
+                    seoFeatures.classList.remove('hidden');
+                } else {
+                    seoFeatures.classList.add('hidden');
+                }
+            }
+        }
+
+        // --- Core Compression Logic ---
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        function getTargetBytes() {
+            const val = parseFloat(targetSizeInput.value) || 100;
+            const unit = sizeUnitInput.value;
+            return unit === 'MB' ? val * 1024 * 1024 : val * 1024;
+        }
+
+        function createBlobUrl(blob) {
+            return URL.createObjectURL(blob);
+        }
+
+        // Binary search for image compression
+        async function compressImageBinarySearch(file, targetBytes, allowDownscale) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = async () => {
+                    URL.revokeObjectURL(img.src);
+                    
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    let originalW = img.width;
+                    let originalH = img.height;
+                    
+                    // Initial format
+                    let outputFormat = file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+                    
+                    // Helper to get blob
+                    const getBlob = (w, h, q) => {
+                        canvas.width = w;
+                        canvas.height = h;
+                        ctx.drawImage(img, 0, 0, w, h);
+                        return new Promise(res => canvas.toBlob(res, outputFormat, q));
+                    };
+                    
+                    let minQ = 0.1;
+                    let maxQ = 1.0;
+                    let bestBlob = null;
+                    let bestQ = 1.0;
+                    
+                    // First try max quality
+                    bestBlob = await getBlob(originalW, originalH, 1.0);
+                    if (bestBlob.size <= targetBytes) {
+                        return resolve(bestBlob);
+                    }
+
+                    // Binary search for quality
+                    for (let i = 0; i < 7; i++) {
+                        let midQ = (minQ + maxQ) / 2;
+                        let blob = await getBlob(originalW, originalH, midQ);
+                        
+                        if (blob.size > targetBytes) {
+                            maxQ = midQ;
+                        } else {
+                            bestBlob = blob;
+                            bestQ = midQ;
+                            minQ = midQ; 
+                        }
+                    }
+
+                    // If still too big and downscaling is allowed, shrink dimensions
+                    if ((!bestBlob || bestBlob.size > targetBytes) && allowDownscale) {
+                        let scale = 0.9;
+                        let maxIterations = 10;
+                        let currentW = originalW;
+                        let currentH = originalH;
+                        
+                        while(maxIterations > 0) {
+                            currentW = Math.floor(currentW * scale);
+                            currentH = Math.floor(currentH * scale);
+                            let blob = await getBlob(currentW, currentH, 0.5); // use medium quality when scaling
+                            if (blob.size <= targetBytes) {
+                                return resolve(blob);
+                            }
+                            maxIterations--;
+                        }
+                        // If all fails, return the smallest possible
+                        return resolve(await getBlob(currentW, currentH, 0.1));
+                    }
+                    
+                    // Fallback if downscaling off and quality couldn't hit target
+                    if (!bestBlob || bestBlob.size > targetBytes) {
+                        bestBlob = await getBlob(originalW, originalH, 0.1);
+                    }
+                    
+                    resolve(bestBlob);
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        async function startProcessing() {
+            if(filesList.length === 0) return;
+            
+            const targetBytes = getTargetBytes();
+            const allowDownscale = allowDownscaleInput.checked;
+            
+            switchScreen('processor');
+            headerStatus.textContent = 'Step 2: Processing...';
+            
+            isProcessing = true;
+            isCancelled = false;
+            processedResults = [];
+            processList.innerHTML = '';
+            
+            btnCancel.classList.remove('hidden');
+            btnDownloadZip.classList.add('hidden');
+            btnRestart.classList.add('hidden');
+            
+            let originalTotalBytes = 0;
+            let newTotalBytes = 0;
+            
+            // Generate UI List
+            filesList.forEach((file, index) => {
+                originalTotalBytes += file.size;
+                const li = document.createElement('div');
+                li.className = 'flex justify-between items-center p-3 mb-2 bg-slate-50 border border-slate-200 rounded-lg';
+                li.id = `proc-item-${index}`;
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div id="status-icon-${index}" class="text-slate-400">
+                            <div class="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin hidden"></div>
+                            <svg class="w-5 h-5 pending-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <div class="truncate text-sm font-medium text-slate-700" title="${file.name}">${file.name}</div>
+                    </div>
+                    <div class="text-xs text-slate-500 font-mono whitespace-nowrap">
+                        <span id="proc-size-${index}">${formatBytes(file.size)}</span>
+                    </div>
+                `;
+                processList.appendChild(li);
+            });
+            
+            queueCounter.textContent = `0 / ${filesList.length}`;
+            
+            for(let i=0; i<filesList.length; i++) {
+                if (isCancelled) break;
+                
+                const file = filesList[i];
+                
+                // Update UI to active
+                document.querySelector(`#status-icon-${i} .animate-spin`).classList.remove('hidden');
+                document.querySelector(`#status-icon-${i} .pending-icon`).classList.add('hidden');
+                
+                // Compress!
+                const compressedBlob = await compressImageBinarySearch(file, targetBytes, allowDownscale);
+                
+                processedResults.push({
+                    name: file.name,
+                    blob: compressedBlob
+                });
+                newTotalBytes += compressedBlob.size;
+                
+                // Update UI to done
+                document.querySelector(`#status-icon-${i} .animate-spin`).classList.add('hidden');
+                document.querySelector(`#status-icon-${i}`).innerHTML = `<svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                
+                const sizeLabel = document.getElementById(`proc-size-${i}`);
+                sizeLabel.innerHTML = `<span class="line-through text-slate-400 mr-2">${formatBytes(file.size)}</span> <span class="text-emerald-600 font-bold">${formatBytes(compressedBlob.size)}</span>`;
+                
+                queueCounter.textContent = `${i+1} / ${filesList.length}`;
+                totalSavedText.textContent = formatBytes(Math.max(0, originalTotalBytes - newTotalBytes));
+                
+                // Small yield for UI refresh
+                await new Promise(r => setTimeout(r, 10));
+            }
+            
+            isProcessing = false;
+            btnCancel.classList.add('hidden');
+            
+            if (processedResults.length > 0) {
+                headerStatus.textContent = 'Step 3: Download';
+                btnDownloadZip.classList.remove('hidden');
+                btnRestart.classList.remove('hidden');
+            } else {
+                headerStatus.textContent = 'Cancelled';
+                btnRestart.classList.remove('hidden');
+            }
+        }
+        
+        btnCancel.addEventListener('click', () => {
+            if (isProcessing) isCancelled = true;
+        });
+
+        // Files Upload Handler
+        function handleFiles(files) {
+            if (files && files.length > 0) {
+                const MAX_SIZE = 4 * 1024 * 1024; // 4MB
+                const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+                filesList = validFiles.filter(file => file.size <= MAX_SIZE);
+                
+                const skippedSize = validFiles.length - filesList.length;
+                if (skippedSize > 0) {
+                    showToast(`${skippedSize} file(s) skipped. Max file size is 4MB.`, 'error');
+                }
+
+                if(filesList.length > 0) {
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = `Start Compressing <span class="bg-white/20 px-2 py-0.5 rounded ml-2 text-sm">${filesList.length} files</span>`;
+                } else {
+                    startBtn.disabled = true;
+                    startBtn.textContent = 'Upload Photos to Begin';
+                    if (skippedSize === 0) showToast('Please select valid image files.', 'error');
+                }
+            }
+        }
+
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        const dropZone = document.getElementById('drop-zone');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('border-red-500', 'bg-slate-100');
+            dropZone.classList.remove('border-slate-300', 'bg-slate-50');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('border-red-500', 'bg-slate-100');
+            dropZone.classList.add('border-slate-300', 'bg-slate-50');
+        }
+
+        dropZone.addEventListener('drop', (e) => {
+            handleFiles(e.dataTransfer.files);
+        });
+
+        startBtn.addEventListener('click', startProcessing);
+
+        // ZIP Logic
+        btnDownloadZip.addEventListener('click', async (e) => {
+            const btn = e.currentTarget;
+            if (processedResults.length === 0) return;
+            
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-wait');
+            zipLoadingText.classList.remove('hidden');
+
+            try {
+                const zip = new JSZip();
+                
+                processedResults.forEach((res) => {
+                    // Extract original extension or map mime type
+                    const originalName = res.name;
+                    const mime = res.blob.type;
+                    const ext = mime === 'image/webp' ? '.webp' : '.jpg';
+                    const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                    
+                    zip.file(`${nameWithoutExt}_compressed${ext}`, res.blob);
+                });
+
+                const content = await zip.generateAsync({type: "blob"});
+                const dateStr = new Date().toISOString().slice(0,10);
+                saveAs(content, `Compressed_Photos_${dateStr}.zip`);
+                
+            } catch (err) {
+                console.error(err);
+                showToast("Error creating ZIP archive.", 'error');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-wait');
+                zipLoadingText.classList.add('hidden');
+            }
+        });
+
+        btnRestart.addEventListener('click', () => {
+            filesList = [];
+            processedResults = [];
+            fileInput.value = '';
+            startBtn.disabled = true;
+            startBtn.textContent = 'Upload Photos to Begin';
+            
+            switchScreen('setup');
+            headerStatus.textContent = 'Step 1: Project Setup';
+        });
+
+        // Preloader Logic
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const preloader = document.getElementById('preloader');
+                if(preloader) {
+                    preloader.classList.add('preloader-hidden');
+                    setTimeout(() => preloader.remove(), 800);
+                }
+            }, 600);
+        });
+
+        // Toast Notification System
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-red-500/90 border-red-400' : 'bg-emerald-500/90 border-emerald-400';
+            const icon = type === 'error' 
+                ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+                : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+            
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg text-white font-medium text-sm transform transition-all duration-300 translate-y-10 opacity-0 ${bgClass}`;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

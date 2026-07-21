@@ -256,9 +256,17 @@
                 CropSwift Pro
             </h1>
             <div class="flex items-center gap-4">
-                
-                <div id="header-status" class="text-sm font-medium px-4 py-1.5 rounded-full bg-slate-200 dark:bg-white/10 text-indigo-500 dark:text-indigo-200 border border-slate-300 dark:border-white/5">Step 1: Project Setup</div>
+                <nav class="hidden md:flex bg-slate-100 rounded-lg p-1 border border-slate-200">
+                    <a href="index.html" class="px-4 py-1.5 text-sm font-medium rounded-md bg-white text-slate-800 shadow-sm border border-slate-200 pointer-events-none">Crop Photos</a>
+                    <a href="resize.html" class="px-4 py-1.5 text-sm font-medium rounded-md text-slate-500 hover:text-slate-800 transition-colors">Resize Photos</a>
+                </nav>
+                <div id="header-status" class="text-sm font-medium px-4 py-1.5 rounded-full bg-slate-200 dark:bg-white/10 text-indigo-500 dark:text-indigo-200 border border-slate-300 dark:border-white/5 hidden md:block">Step 1: Project Setup</div>
             </div>
+        </div>
+        <!-- Mobile Nav -->
+        <div class="md:hidden mt-4 flex bg-slate-100 rounded-lg p-1 border border-slate-200 w-full">
+            <a href="index.html" class="flex-1 text-center px-4 py-1.5 text-sm font-medium rounded-md bg-white text-slate-800 shadow-sm border border-slate-200 pointer-events-none">Crop</a>
+            <a href="resize.html" class="flex-1 text-center px-4 py-1.5 text-sm font-medium rounded-md text-slate-500 hover:text-slate-800 transition-colors">Resize</a>
         </div>
     </header>
 
@@ -726,14 +734,22 @@
         // Files Upload Handler
         function handleFiles(files) {
             if (files && files.length > 0) {
-                filesList = Array.from(files).filter(file => file.type.startsWith('image/'));
+                const MAX_SIZE = 4 * 1024 * 1024; // 4MB
+                const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+                filesList = validFiles.filter(file => file.size <= MAX_SIZE);
+                
+                const skippedSize = validFiles.length - filesList.length;
+                if (skippedSize > 0) {
+                    showToast(`${skippedSize} file(s) skipped. Max file size is 4MB.`, 'error');
+                }
+
                 if(filesList.length > 0) {
                     startBtn.disabled = false;
                     startBtn.innerHTML = `Start Cropping <span class="bg-white/20 px-2 py-0.5 rounded ml-2 text-sm">${filesList.length} files</span>`;
                 } else {
                     startBtn.disabled = true;
                     startBtn.textContent = 'Upload Photos to Begin';
-                    showToast('Please select valid image files.', 'error');
+                    if (skippedSize === 0) showToast('Please select valid image files.', 'error');
                 }
             }
         }
