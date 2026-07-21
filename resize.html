@@ -100,7 +100,7 @@
     
     <!-- Cropper.js -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    
     
     <!-- JSZip & FileSaver -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -372,7 +372,7 @@
                 </div>
             </div>
 
-        <!-- Footer -->
+            <!-- Footer -->
             <footer class="mt-auto pt-10 pb-2 w-full text-center text-sm text-slate-500 dark:text-gray-500">
                 Made with <span class="text-red-500 animate-pulse inline-block">♥</span> by <a href="https://skmeghwal.in" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 transition-colors font-medium hover:underline">SK Meghwal</a>
             </footer>
@@ -382,261 +382,40 @@
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-3"></div>
 
+    
     <script>
         // --- State ---
-        let selectedAspectRatio = 3.5 / 4.5;
-        let filesList = []; // Original File objects
-        let fileStatusMap = []; // Track status: 'pending', 'cropped', 'skipped'
-        let croppedImagesMap = {}; // index -> { dataUrl, extension, finalName }
-        let currentIndex = 0;
-        let cropperInstance = null;
-        let currentObjectURL = null;
-        let scaleX = 1;
-        let scaleY = 1;
-        let baseRotation = 0;
+        let filesList = []; 
+        let processedResults = []; 
+        let isProcessing = false;
+        let isCancelled = false;
 
         // --- DOM Elements ---
         const screens = {
             setup: document.getElementById('screen-setup'),
-            cropper: document.getElementById('screen-cropper'),
-            done: document.getElementById('screen-done')
+            processor: document.getElementById('screen-processor')
         };
         const headerStatus = document.getElementById('header-status');
-
-
         
         // Setup Elements
-        const ratioBtns = document.querySelectorAll('.ratio-btn');
         const fileInput = document.getElementById('file-upload');
         const startBtn = document.getElementById('start-btn');
-        const resizeModeSel = document.getElementById('resize-mode');
-        const customDimsContainer = document.getElementById('custom-dims-container');
-        const customW = document.getElementById('custom-w');
-        const customH = document.getElementById('custom-h');
-        const outputFormatSel = document.getElementById('output-format');
-        const outputQualitySlider = document.getElementById('output-quality');
-        const qualityContainer = document.getElementById('quality-container');
-        const qualityValText = document.getElementById('quality-val');
-        const enableRenameCheckbox = document.getElementById('enable-rename');
-        const renameContainer = document.getElementById('rename-container');
-        const filenamePatternInput = document.getElementById('filename-pattern');
-        const btnLoadPreset = document.getElementById('btn-load-preset');
+        const targetSizeInput = document.getElementById('target-size');
+        const sizeUnitInput = document.getElementById('size-unit');
+        const allowDownscaleInput = document.getElementById('allow-downscale');
 
-        // Cropper Elements
-        const imageElement = document.getElementById('image-to-crop');
-        const fileNameElement = document.getElementById('current-file-name');
+        // Processor Elements
+        const processList = document.getElementById('process-list');
         const queueCounter = document.getElementById('queue-counter');
-        const fileQueueElement = document.getElementById('file-queue');
-        const loadingIndicator = document.getElementById('loading-indicator');
+        const btnCancel = document.getElementById('btn-cancel');
+        const btnDownloadZip = document.getElementById('btn-download-zip');
+        const btnRestart = document.getElementById('btn-restart');
+        const totalSavedText = document.getElementById('total-saved');
+        const zipLoadingText = document.getElementById('zip-loading-text');
         
-        // Buttons
-        const btnCropNext = document.getElementById('btn-crop-next');
-        const btnSkip = document.getElementById('btn-skip');
-        const btnFinishEarly = document.getElementById('btn-finish-early');
-        const btnRotateLeft = document.getElementById('btn-rotate-left');
-        const btnRotateRight = document.getElementById('btn-rotate-right');
-        const btnFlipH = document.getElementById('btn-flip-h');
-        const btnFlipV = document.getElementById('btn-flip-v');
-        const btnReset = document.getElementById('btn-reset');
-
-        // Filters
-        const filterRotate = document.getElementById('filter-rotate');
-        const filterBright = document.getElementById('filter-bright');
-        const filterContrast = document.getElementById('filter-contrast');
-        const filterSaturate = document.getElementById('filter-saturate');
-        const valRotate = document.getElementById('val-rotate');
-        const valBright = document.getElementById('val-bright');
-        const valContrast = document.getElementById('val-contrast');
-        const valSaturate = document.getElementById('val-saturate');
-
-        // --- Setup Logic ---
-        
-        // Load settings from local storage
-        function loadSettings() {
-            try {
-                const settings = JSON.parse(localStorage.getItem('cropperSettings'));
-                if (settings) {
-                    if (settings.resizeMode) resizeModeSel.value = settings.resizeMode;
-                    if (settings.customW) customW.value = settings.customW;
-                    if (settings.customH) customH.value = settings.customH;
-                    if (settings.outputFormat) outputFormatSel.value = settings.outputFormat;
-                    if (settings.outputQuality) outputQualitySlider.value = settings.outputQuality;
-                    if (settings.filenamePattern !== undefined) filenamePatternInput.value = settings.filenamePattern;
-                    if (settings.enableRename !== undefined) {
-                        enableRenameCheckbox.checked = settings.enableRename;
-                        enableRenameCheckbox.dispatchEvent(new Event('change'));
-                    }
-                    
-                    // Trigger events
-                    resizeModeSel.dispatchEvent(new Event('change'));
-                    outputFormatSel.dispatchEvent(new Event('change'));
-                    outputQualitySlider.dispatchEvent(new Event('input'));
-                }
-            } catch (e) { console.warn("Failed to load settings"); }
-        }
-
-        function saveSettings() {
-            const settings = {
-                resizeMode: resizeModeSel.value,
-                customW: customW.value,
-                customH: customH.value,
-                outputFormat: outputFormatSel.value,
-                outputQuality: outputQualitySlider.value,
-                filenamePattern: filenamePatternInput.value,
-                enableRename: enableRenameCheckbox.checked
-            };
-            localStorage.setItem('cropperSettings', JSON.stringify(settings));
-        }
-
-        enableRenameCheckbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                renameContainer.classList.remove('opacity-50', 'pointer-events-none');
-                filenamePatternInput.disabled = false;
-            } else {
-                renameContainer.classList.add('opacity-50', 'pointer-events-none');
-                filenamePatternInput.disabled = true;
-            }
-            saveSettings();
-        });
-        filenamePatternInput.addEventListener('input', saveSettings);
-
-        btnLoadPreset.addEventListener('click', loadSettings);
-
-        ratioBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                // Visual toggle
-                ratioBtns.forEach(b => {
-                    b.classList.remove('active', 'ring-2', 'ring-indigo-600', 'bg-indigo-50', 'text-indigo-700');
-                    b.classList.add('border', 'border-slate-200', 'bg-slate-50', 'text-slate-600');
-                });
-                const target = e.currentTarget;
-                target.classList.remove('border', 'border-slate-200', 'bg-slate-50', 'text-slate-600');
-                target.classList.add('active', 'ring-2', 'ring-indigo-600', 'bg-indigo-50', 'text-indigo-700');
-                
-                const ratioVal = parseFloat(target.dataset.ratio);
-                selectedAspectRatio = isNaN(ratioVal) ? NaN : ratioVal;
-            });
-        });
-
-        resizeModeSel.addEventListener('change', (e) => {
-            if (e.target.value === 'exact') {
-                customDimsContainer.classList.remove('hidden');
-                syncCustomRatio();
-            } else {
-                customDimsContainer.classList.add('hidden');
-            }
-        });
-
-        outputFormatSel.addEventListener('change', (e) => {
-            if (e.target.value === 'image/jpeg' || e.target.value === 'image/webp') {
-                qualityContainer.classList.remove('hidden');
-            } else {
-                qualityContainer.classList.add('hidden');
-            }
-        });
-
-        outputQualitySlider.addEventListener('input', (e) => {
-            qualityValText.textContent = `${Math.round(e.target.value * 100)}%`;
-        });
-
-        function syncCustomRatio() {
-            if (resizeModeSel.value === 'exact') {
-                const w = parseFloat(customW.value);
-                const h = parseFloat(customH.value);
-                if (w > 0 && h > 0) {
-                    selectedAspectRatio = w / h;
-                    // Deselect presets
-                    ratioBtns.forEach(b => {
-                        b.classList.remove('active', 'ring-2', 'ring-indigo-600', 'bg-indigo-50', 'text-indigo-700');
-                        b.classList.add('border', 'border-slate-200', 'bg-slate-50', 'text-slate-600');
-                    });
-                }
-            }
-        }
-
-        customW.addEventListener('input', syncCustomRatio);
-        customH.addEventListener('input', syncCustomRatio);
-
-        // Files Upload Handler
-        function handleFiles(files) {
-            if (files && files.length > 0) {
-                const MAX_SIZE = 4 * 1024 * 1024; // 4MB
-                const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
-                filesList = validFiles.filter(file => file.size <= MAX_SIZE);
-                
-                const skippedSize = validFiles.length - filesList.length;
-                if (skippedSize > 0) {
-                    showToast(`${skippedSize} file(s) skipped. Max file size is 4MB.`, 'error');
-                }
-
-                if(filesList.length > 0) {
-                    startBtn.disabled = false;
-                    startBtn.innerHTML = `Start Cropping <span class="bg-white/20 px-2 py-0.5 rounded ml-2 text-sm">${filesList.length} files</span>`;
-                } else {
-                    startBtn.disabled = true;
-                    startBtn.textContent = 'Upload Photos to Begin';
-                    if (skippedSize === 0) showToast('Please select valid image files.', 'error');
-                }
-            }
-        }
-
-        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
-
-        // Drag and Drop Logic
-        const dropZone = document.getElementById('drop-zone');
-        
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-        });
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, highlight, false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, unhighlight, false);
-        });
-
-        function highlight(e) {
-            dropZone.classList.add('border-indigo-500', 'bg-slate-100');
-            dropZone.classList.remove('border-slate-300', 'bg-slate-50');
-        }
-
-        function unhighlight(e) {
-            dropZone.classList.remove('border-indigo-500', 'bg-slate-100');
-            dropZone.classList.add('border-slate-300', 'bg-slate-50');
-        }
-
-        dropZone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            handleFiles(files);
-        });
-
-        startBtn.addEventListener('click', () => {
-            if (filesList.length > 0) {
-                saveSettings(); // Save user preferences
-                fileStatusMap = new Array(filesList.length).fill('pending');
-                croppedImagesMap = {};
-                currentIndex = 0;
-                
-                switchScreen('cropper');
-                headerStatus.textContent = 'Step 2: Edit & Crop';
-                
-                renderQueue();
-                loadImage(currentIndex);
-            }
-        });
-
-        // --- Core Cropping Logic ---
         function switchScreen(screenName) {
             Object.values(screens).forEach(s => s.classList.add('hidden'));
-            screens[screenName].classList.remove('hidden');
+            if(screens[screenName]) screens[screenName].classList.remove('hidden');
             
             const seoFeatures = document.getElementById('seo-features');
             if (seoFeatures) {
@@ -648,431 +427,307 @@
             }
         }
 
-        // Apply visual CSS filters to cropper
-        function updateLiveFilters() {
-            const b = filterBright.value;
-            const c = filterContrast.value;
-            const s = filterSaturate.value;
-            
-            valBright.textContent = b + '%';
-            valContrast.textContent = c + '%';
-            valSaturate.textContent = s + '%';
-
-            // Apply to the cropper viewing area
-            const container = document.querySelector('.cropper-view-box img');
-            if (container) {
-                container.style.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
-            }
-            // Apply to previews
-            document.querySelectorAll('.img-preview img').forEach(img => {
-                img.style.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
-            });
+        // --- Core Compression Logic ---
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
         }
 
-        [filterBright, filterContrast, filterSaturate].forEach(el => {
-            el.addEventListener('input', updateLiveFilters);
-        });
-
-        function resetFilters() {
-            filterRotate.value = 0;
-            filterBright.value = 100;
-            filterContrast.value = 100;
-            filterSaturate.value = 100;
-            updateLiveFilters();
-            if (cropperInstance) updateRotation();
+        function getTargetBytes() {
+            const val = parseFloat(targetSizeInput.value) || 100;
+            const unit = sizeUnitInput.value;
+            return unit === 'MB' ? val * 1024 * 1024 : val * 1024;
         }
 
-        function updateRotation() {
-            if (cropperInstance) {
-                const fineTune = parseFloat(filterRotate.value);
-                cropperInstance.rotateTo(baseRotation + fineTune);
-                valRotate.textContent = fineTune > 0 ? `+${fineTune}°` : `${fineTune}°`;
-            }
-        }
-
-        filterRotate.addEventListener('input', updateRotation);
-
-        function loadImage(index) {
-            if (index < 0 || index >= filesList.length) {
-                return;
-            }
-            currentIndex = index;
-            const file = filesList[index];
-            
-            loadingIndicator.classList.remove('hidden');
-            fileNameElement.textContent = file.name;
-            updateQueueUI();
-
-            if (cropperInstance) {
-                cropperInstance.destroy();
-                cropperInstance = null;
-            }
-            
-            resetFilters();
-            scaleX = 1; scaleY = 1; baseRotation = 0;
-
-            if (currentObjectURL) {
-                URL.revokeObjectURL(currentObjectURL);
-            }
-            currentObjectURL = URL.createObjectURL(file);
-            imageElement.src = currentObjectURL;
-            imageElement.classList.remove('hidden');
-
-            imageElement.onload = () => {
-                loadingIndicator.classList.add('hidden');
-                
-                cropperInstance = new Cropper(imageElement, {
-                    aspectRatio: selectedAspectRatio,
-                    viewMode: 2,
-                    dragMode: 'move',
-                    autoCropArea: 0.9,
-                    restore: false,
-                    guides: true,
-                    center: true,
-                    highlight: false,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false,
-                    preview: '.img-preview',
-                    ready() {
-                        // After cropper is ready, apply any default filters to the cloned images inside cropper
-                        updateLiveFilters();
+        // Binary search for image compression
+        async function compressImageBinarySearch(file, targetBytes, allowDownscale) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = async () => {
+                    URL.revokeObjectURL(img.src);
+                    
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    let originalW = img.width;
+                    let originalH = img.height;
+                    
+                    let outputFormat = file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+                    
+                    const getBlob = (w, h, q) => {
+                        canvas.width = w;
+                        canvas.height = h;
+                        ctx.drawImage(img, 0, 0, w, h);
+                        return new Promise(res => canvas.toBlob(res, outputFormat, q));
+                    };
+                    
+                    let minQ = 0.1;
+                    let maxQ = 1.0;
+                    let bestBlob = null;
+                    let bestQ = 1.0;
+                    
+                    bestBlob = await getBlob(originalW, originalH, 1.0);
+                    if (bestBlob.size <= targetBytes) {
+                        return resolve(bestBlob);
                     }
-                });
-            };
-        }
 
-        function generateFilename(originalName, index) {
-            if (!enableRenameCheckbox.checked) {
-                return originalName;
-            }
+                    for (let i = 0; i < 7; i++) {
+                        let midQ = (minQ + maxQ) / 2;
+                        let blob = await getBlob(originalW, originalH, midQ);
+                        
+                        if (blob.size > targetBytes) {
+                            maxQ = midQ;
+                        } else {
+                            bestBlob = blob;
+                            bestQ = midQ;
+                            minQ = midQ; 
+                        }
+                    }
 
-            let pattern = filenamePatternInput.value.trim();
-            if (!pattern) return `cropped_${originalName}`;
-            
-            const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-            
-            let finalName = pattern;
-            finalName = finalName.replace(/{name}/g, baseName);
-            finalName = finalName.replace(/{index}/g, (index + 1).toString().padStart(2, '0'));
-            
-            return finalName;
-        }
-
-        function processCurrentCrop() {
-            if (!cropperInstance) return;
-
-            btnCropNext.disabled = true;
-            
-            const format = outputFormatSel.value;
-            const quality = parseFloat(outputQualitySlider.value);
-            const resizeMode = resizeModeSel.value;
-            
-            let cropOptions = {
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high',
-                fillColor: '#ffffff'
-            };
-
-            // Size handling
-            if (resizeMode === 'max400') { cropOptions.maxWidth = 400; cropOptions.maxHeight = 400; }
-            else if (resizeMode === 'max800') { cropOptions.maxWidth = 800; cropOptions.maxHeight = 800; }
-            else if (resizeMode === 'exact') {
-                const w = parseInt(customW.value);
-                const h = parseInt(customH.value);
-                if (w > 0) cropOptions.width = w;
-                if (h > 0) cropOptions.height = h;
-            }
-
-            // Get initial cropped canvas
-            const canvas = cropperInstance.getCroppedCanvas(cropOptions);
-
-            // Apply Filters via offscreen canvas
-            const b = filterBright.value;
-            const c = filterContrast.value;
-            const s = filterSaturate.value;
-            
-            let finalCanvas = canvas;
-            
-            if (b != 100 || c != 100 || s != 100) {
-                const filterCanvas = document.createElement('canvas');
-                filterCanvas.width = canvas.width;
-                filterCanvas.height = canvas.height;
-                const ctx = filterCanvas.getContext('2d');
-                ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%)`;
-                ctx.drawImage(canvas, 0, 0);
-                finalCanvas = filterCanvas;
-            }
-
-            // Export to Base64
-            const dataUrl = finalCanvas.toDataURL(format, (format === 'image/jpeg' || format === 'image/webp') ? quality : undefined);
-            
-            // Map extension
-            let ext = '.png';
-            if (format === 'image/jpeg') ext = '.jpg';
-            if (format === 'image/webp') ext = '.webp';
-
-            // Save to maps
-            fileStatusMap[currentIndex] = 'cropped';
-            croppedImagesMap[currentIndex] = {
-                dataUrl: dataUrl,
-                extension: ext,
-                finalName: generateFilename(filesList[currentIndex].name, currentIndex)
-            };
-
-            btnCropNext.disabled = false;
-
-            // Move to next pending image
-            moveToNextPending();
-        }
-
-        function markSkipped() {
-            fileStatusMap[currentIndex] = 'skipped';
-            delete croppedImagesMap[currentIndex];
-            moveToNextPending();
-        }
-
-        function moveToNextPending() {
-            // Find next index that is not processed
-            let nextIdx = fileStatusMap.indexOf('pending', currentIndex + 1);
-            if (nextIdx === -1) {
-                // wrap around search
-                nextIdx = fileStatusMap.indexOf('pending', 0);
-            }
-            
-            updateQueueUI();
-
-            if (nextIdx === -1) {
-                // All done!
-                finishCropping();
-            } else {
-                loadImage(nextIdx);
-            }
-        }
-
-        // --- Buttons & Hotkeys ---
-        btnCropNext.addEventListener('click', processCurrentCrop);
-        btnSkip.addEventListener('click', markSkipped);
-        btnFinishEarly.addEventListener('click', finishCropping);
-
-        btnRotateLeft.addEventListener('click', () => { if(cropperInstance) { baseRotation -= 90; updateRotation(); } });
-        btnRotateRight.addEventListener('click', () => { if(cropperInstance) { baseRotation += 90; updateRotation(); } });
-        btnFlipH.addEventListener('click', () => { if(cropperInstance) { scaleX = -scaleX; cropperInstance.scaleX(scaleX); }});
-        btnFlipV.addEventListener('click', () => { if(cropperInstance) { scaleY = -scaleY; cropperInstance.scaleY(scaleY); }});
-        btnReset.addEventListener('click', () => { if(cropperInstance) { cropperInstance.reset(); scaleX=1; scaleY=1; baseRotation=0; resetFilters(); }});
-
-        document.addEventListener('keydown', (e) => {
-            if (screens.cropper.classList.contains('hidden')) return;
-            // Ignore if typing in an input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                btnCropNext.classList.add('scale-95'); // micro-interaction
-                setTimeout(() => btnCropNext.classList.remove('scale-95'), 150);
-                processCurrentCrop();
-            } else if (e.key.toLowerCase() === 's') {
-                e.preventDefault();
-                btnSkip.classList.add('scale-95'); // micro-interaction
-                setTimeout(() => btnSkip.classList.remove('scale-95'), 150);
-                markSkipped();
-            }
-        });
-
-        // --- Queue UI ---
-        function renderQueue() {
-            fileQueueElement.innerHTML = '';
-            filesList.forEach((file, idx) => {
-                const li = document.createElement('li');
-                li.id = `queue-item-${idx}`;
-                li.className = 'flex items-center gap-3 p-2 rounded-lg text-sm text-gray-400 cursor-pointer hover:bg-white/5 transition group border border-transparent';
-                
-                li.innerHTML = `
-                    <div class="status-icon w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-gray-300 font-mono text-[10px] shadow-inner border border-slate-100 dark:border-white/5">
-                        ${idx + 1}
-                    </div>
-                    <span class="truncate flex-1 group-hover:text-white transition">${file.name}</span>
-                    <button class="remove-btn opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 text-red-400 rounded transition" title="Remove from queue">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                    </button>
-                `;
-                
-                // Click item to jump
-                li.addEventListener('click', (e) => {
-                    if (e.target.closest('.remove-btn')) return; // ignore if clicking remove
-                    loadImage(idx);
-                });
-
-                // Remove item entirely
-                li.querySelector('.remove-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    removeFile(idx);
-                });
-
-                fileQueueElement.appendChild(li);
+                    if ((!bestBlob || bestBlob.size > targetBytes) && allowDownscale) {
+                        let scale = 0.9;
+                        let maxIterations = 10;
+                        let currentW = originalW;
+                        let currentH = originalH;
+                        
+                        while(maxIterations > 0) {
+                            currentW = Math.floor(currentW * scale);
+                            currentH = Math.floor(currentH * scale);
+                            let blob = await getBlob(currentW, currentH, 0.5);
+                            if (blob.size <= targetBytes) {
+                                return resolve(blob);
+                            }
+                            maxIterations--;
+                        }
+                        return resolve(await getBlob(currentW, currentH, 0.1));
+                    }
+                    
+                    if (!bestBlob || bestBlob.size > targetBytes) {
+                        bestBlob = await getBlob(originalW, originalH, 0.1);
+                    }
+                    
+                    resolve(bestBlob);
+                };
+                img.src = URL.createObjectURL(file);
             });
-            updateQueueUI();
         }
 
-        function removeFile(idx) {
-            fileStatusMap[idx] = 'removed';
-            delete croppedImagesMap[idx];
-            document.getElementById(`queue-item-${idx}`).style.display = 'none';
+        async function startProcessing() {
+            if(filesList.length === 0) return;
             
-            // If we removed the currently viewed file, move to next
-            if (currentIndex === idx) {
-                moveToNextPending();
+            const targetBytes = getTargetBytes();
+            const allowDownscale = allowDownscaleInput.checked;
+            
+            switchScreen('processor');
+            headerStatus.textContent = 'Step 2: Processing...';
+            
+            isProcessing = true;
+            isCancelled = false;
+            processedResults = [];
+            processList.innerHTML = '';
+            
+            if(btnCancel) btnCancel.classList.remove('hidden');
+            if(btnDownloadZip) btnDownloadZip.classList.add('hidden');
+            if(btnRestart) btnRestart.classList.add('hidden');
+            
+            let originalTotalBytes = 0;
+            let newTotalBytes = 0;
+            
+            filesList.forEach((file, index) => {
+                originalTotalBytes += file.size;
+                const li = document.createElement('div');
+                li.className = 'flex justify-between items-center p-3 mb-2 bg-slate-50 border border-slate-200 rounded-lg';
+                li.id = `proc-item-${index}`;
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div id="status-icon-${index}" class="text-slate-400">
+                            <div class="w-5 h-5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin hidden"></div>
+                            <svg class="w-5 h-5 pending-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <div class="truncate text-sm font-medium text-slate-700" title="${file.name}">${file.name}</div>
+                    </div>
+                    <div class="text-xs text-slate-500 font-mono whitespace-nowrap">
+                        <span id="proc-size-${index}">${formatBytes(file.size)}</span>
+                    </div>
+                `;
+                processList.appendChild(li);
+            });
+            
+            if(queueCounter) queueCounter.textContent = `0 / ${filesList.length}`;
+            
+            for(let i=0; i<filesList.length; i++) {
+                if (isCancelled) break;
+                
+                const file = filesList[i];
+                
+                document.querySelector(`#status-icon-${i} .animate-spin`).classList.remove('hidden');
+                document.querySelector(`#status-icon-${i} .pending-icon`).classList.add('hidden');
+                
+                const compressedBlob = await compressImageBinarySearch(file, targetBytes, allowDownscale);
+                
+                processedResults.push({
+                    name: file.name,
+                    blob: compressedBlob
+                });
+                newTotalBytes += compressedBlob.size;
+                
+                document.querySelector(`#status-icon-${i} .animate-spin`).classList.add('hidden');
+                document.querySelector(`#status-icon-${i}`).innerHTML = `<svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                
+                const sizeLabel = document.getElementById(`proc-size-${i}`);
+                sizeLabel.innerHTML = `<span class="line-through text-slate-400 mr-2">${formatBytes(file.size)}</span> <span class="text-emerald-600 font-bold">${formatBytes(compressedBlob.size)}</span>`;
+                
+                if(queueCounter) queueCounter.textContent = `${i+1} / ${filesList.length}`;
+                if(totalSavedText) totalSavedText.textContent = formatBytes(Math.max(0, originalTotalBytes - newTotalBytes));
+                
+                await new Promise(r => setTimeout(r, 10));
+            }
+            
+            isProcessing = false;
+            if(btnCancel) btnCancel.classList.add('hidden');
+            
+            if (processedResults.length > 0) {
+                headerStatus.textContent = 'Step 3: Download';
+                if(btnDownloadZip) btnDownloadZip.classList.remove('hidden');
+                if(btnRestart) btnRestart.classList.remove('hidden');
             } else {
-                updateQueueUI();
+                headerStatus.textContent = 'Cancelled';
+                if(btnRestart) btnRestart.classList.remove('hidden');
+            }
+        }
+        
+        if(btnCancel) {
+            btnCancel.addEventListener('click', () => {
+                if (isProcessing) isCancelled = true;
+            });
+        }
+
+        function handleFiles(files) {
+            if (files && files.length > 0) {
+                const MAX_SIZE = 4 * 1024 * 1024;
+                const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+                filesList = validFiles.filter(file => file.size <= MAX_SIZE);
+                
+                const skippedSize = validFiles.length - filesList.length;
+                if (skippedSize > 0) {
+                    showToast(`${skippedSize} file(s) skipped. Max file size is 4MB.`, 'error');
+                }
+
+                if(filesList.length > 0) {
+                    if(startBtn) {
+                        startBtn.disabled = false;
+                        startBtn.innerHTML = `Start Compressing <span class="bg-white/20 px-2 py-0.5 rounded ml-2 text-sm">${filesList.length} files</span>`;
+                    }
+                } else {
+                    if(startBtn) {
+                        startBtn.disabled = true;
+                        startBtn.textContent = 'Upload Photos to Begin';
+                    }
+                    if (skippedSize === 0) showToast('Please select valid image files.', 'error');
+                }
             }
         }
 
-        function updateQueueUI() {
-            let processedCount = 0;
-            let totalActive = 0;
+        if(fileInput) fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
-            filesList.forEach((_, idx) => {
-                const status = fileStatusMap[idx];
-                const item = document.getElementById(`queue-item-${idx}`);
-                if (!item || status === 'removed') return;
+        const dropZone = document.getElementById('drop-zone');
+        if(dropZone) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+            dropZone.addEventListener('drop', (e) => {
+                handleFiles(e.dataTransfer.files);
+            });
+        }
+
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        function highlight(e) { dropZone.classList.add('border-red-500', 'bg-slate-100'); dropZone.classList.remove('border-slate-300', 'bg-slate-50'); }
+        function unhighlight(e) { dropZone.classList.remove('border-red-500', 'bg-slate-100'); dropZone.classList.add('border-slate-300', 'bg-slate-50'); }
+
+        if(startBtn) startBtn.addEventListener('click', startProcessing);
+
+        if(btnDownloadZip) {
+            btnDownloadZip.addEventListener('click', async (e) => {
+                const btn = e.currentTarget;
+                if (processedResults.length === 0) return;
                 
-                totalActive++;
-                
-                // Reset styles
-                item.classList.remove('bg-indigo-500/10', 'border-indigo-500/30', 'text-white', 'opacity-50');
-                const icon = item.querySelector('.status-icon');
-                
-                if (idx === currentIndex) {
-                    item.classList.add('bg-indigo-500/10', 'border-indigo-500/30', 'text-white');
-                    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    icon.className = 'status-icon w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full bg-indigo-500 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]';
-                    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>`;
-                } else if (status === 'cropped') {
-                    processedCount++;
-                    icon.className = 'status-icon w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full bg-emerald-500 text-white';
-                    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
-                } else if (status === 'skipped') {
-                    processedCount++;
-                    item.classList.add('opacity-50');
-                    icon.className = 'status-icon w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full bg-slate-600 text-gray-400';
-                    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>`;
-                } else {
-                    // pending
-                    icon.className = 'status-icon w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full bg-slate-700 text-gray-300 font-mono text-[10px] border border-white/5';
-                    icon.innerHTML = idx + 1;
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-wait');
+                if(zipLoadingText) zipLoadingText.classList.remove('hidden');
+
+                try {
+                    const zip = new JSZip();
+                    processedResults.forEach((res) => {
+                        const originalName = res.name;
+                        const mime = res.blob.type;
+                        const ext = mime === 'image/webp' ? '.webp' : '.jpg';
+                        const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                        zip.file(`${nameWithoutExt}_compressed${ext}`, res.blob);
+                    });
+                    const content = await zip.generateAsync({type: "blob"});
+                    const dateStr = new Date().toISOString().slice(0,10);
+                    saveAs(content, `Compressed_Photos_${dateStr}.zip`);
+                } catch (err) {
+                    console.error(err);
+                    showToast("Error creating ZIP archive.", 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-wait');
+                    if(zipLoadingText) zipLoadingText.classList.add('hidden');
                 }
             });
-
-            queueCounter.textContent = `${processedCount} / ${totalActive}`;
-            
-            // If no active items remain, finish
-            if (totalActive === 0 && filesList.length > 0) finishCropping();
         }
 
-        // --- Finish & Export ---
-        function finishCropping() {
-            switchScreen('done');
-            headerStatus.textContent = 'Step 3: Download Archive';
-            
-            const results = Object.values(croppedImagesMap);
-            document.getElementById('done-count').textContent = results.length;
-            
-            const btnDownloadZip = document.getElementById('btn-download-zip');
-            if (results.length === 0) {
-                btnDownloadZip.classList.add('hidden');
-                document.getElementById('done-text').textContent = "No images were cropped. You skipped or removed all files.";
-            } else {
-                btnDownloadZip.classList.remove('hidden');
-            }
+        if(btnRestart) {
+            btnRestart.addEventListener('click', () => {
+                filesList = [];
+                processedResults = [];
+                if(fileInput) fileInput.value = '';
+                if(startBtn) {
+                    startBtn.disabled = true;
+                    startBtn.textContent = 'Upload Photos to Begin';
+                }
+                switchScreen('setup');
+                if(headerStatus) headerStatus.textContent = 'Step 1: Project Setup';
+            });
         }
 
-        document.getElementById('btn-download-zip').addEventListener('click', async (e) => {
-            const btn = e.currentTarget;
-            const loadingText = document.getElementById('zip-loading-text');
-            const results = Object.values(croppedImagesMap);
-            
-            btn.disabled = true;
-            btn.classList.add('opacity-75', 'cursor-wait');
-            loadingText.classList.remove('hidden');
-
-            try {
-                const zip = new JSZip();
-                
-                results.forEach((img) => {
-                    const base64Data = img.dataUrl.split(',')[1];
-                    let finalName = img.finalName;
-                    // ensure extension
-                    if (!finalName.toLowerCase().endsWith(img.extension)) {
-                        finalName += img.extension;
-                    }
-                    zip.file(finalName, base64Data, {base64: true});
-                });
-
-                const content = await zip.generateAsync({type: "blob"});
-                const dateStr = new Date().toISOString().slice(0,10);
-                saveAs(content, `Cropped_Photos_${dateStr}.zip`);
-                
-            } catch (err) {
-                console.error(err);
-                showToast("Error creating ZIP archive.", 'error');
-            } finally {
-                btn.disabled = false;
-                btn.classList.remove('opacity-75', 'cursor-wait');
-                loadingText.classList.add('hidden');
-            }
-        });
-
-        document.getElementById('btn-restart').addEventListener('click', () => {
-            filesList = [];
-            fileStatusMap = [];
-            croppedImagesMap = {};
-            fileInput.value = '';
-            startBtn.disabled = true;
-            startBtn.textContent = 'Upload Photos to Begin';
-            
-            switchScreen('setup');
-            headerStatus.textContent = 'Step 1: Project Setup';
-        });
-
-        // Preloader Logic
         window.addEventListener('load', () => {
             setTimeout(() => {
                 const preloader = document.getElementById('preloader');
                 if(preloader) {
                     preloader.classList.add('preloader-hidden');
-                    setTimeout(() => preloader.remove(), 800); // Remove from DOM after fade out
+                    setTimeout(() => preloader.remove(), 800);
                 }
-            }, 600); // Artificial delay to let animations start smoothly
+            }, 600);
         });
 
-        // Toast Notification System
         function showToast(message, type = 'error') {
             const container = document.getElementById('toast-container');
             if (!container) return;
-            
             const toast = document.createElement('div');
             const bgClass = type === 'error' ? 'bg-red-500/90 border-red-400' : 'bg-emerald-500/90 border-emerald-400';
             const icon = type === 'error' 
                 ? '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
                 : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-            
             toast.className = `flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg text-white font-medium text-sm transform transition-all duration-300 translate-y-10 opacity-0 ${bgClass}`;
             toast.innerHTML = `${icon} <span>${message}</span>`;
-            
             container.appendChild(toast);
-            
-            // Animate in
-            setTimeout(() => {
-                toast.classList.remove('translate-y-10', 'opacity-0');
-            }, 10);
-            
-            // Animate out and remove
+            setTimeout(() => toast.classList.remove('translate-y-10', 'opacity-0'), 10);
             setTimeout(() => {
                 toast.classList.add('translate-y-10', 'opacity-0');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
-
     </script>
 </body>
 </html>
