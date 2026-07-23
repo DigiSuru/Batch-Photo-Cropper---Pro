@@ -313,7 +313,7 @@
                         <div class="flex flex-col items-center justify-center pt-5 pb-6 z-10 text-center px-4 pointer-events-none">
                             <svg class="w-12 h-12 mb-4 text-red-500 group-hover:scale-110 transition-transform drop-zone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                             <p class="mb-2 text-lg text-slate-700 drop-zone-text"><span class="font-bold text-slate-900">Click to browse</span> or drag & drop</p>
-                            <p class="text-sm text-slate-500">Supports JPG, PNG, WEBP files in bulk (Max 4MB each)</p>
+                            <p class="text-sm text-slate-500">Supports JPG, PNG, WEBP files (Max 50 images, 4MB each)</p>
                         </div>
                         <input id="file-upload" type="file" class="hidden" multiple accept="image/jpeg, image/png, image/webp" />
                     </label>
@@ -609,9 +609,18 @@
             if (files && files.length > 0) {
                 const MAX_SIZE = 4 * 1024 * 1024;
                 const validFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
-                filesList = validFiles.filter(file => file.size <= MAX_SIZE);
                 
-                const skippedSize = validFiles.length - filesList.length;
+                let sizeFilteredFiles = validFiles.filter(file => file.size <= MAX_SIZE);
+                const skippedSize = validFiles.length - sizeFilteredFiles.length;
+                
+                // Enforce max 50 files
+                if (sizeFilteredFiles.length > 50) {
+                    showToast(`You selected ${sizeFilteredFiles.length} files. Only the first 50 will be processed.`, 'error');
+                    sizeFilteredFiles = sizeFilteredFiles.slice(0, 50);
+                }
+                
+                filesList = sizeFilteredFiles;
+
                 if (skippedSize > 0) {
                     showToast(`${skippedSize} file(s) skipped. Max file size is 4MB.`, 'error');
                 }
