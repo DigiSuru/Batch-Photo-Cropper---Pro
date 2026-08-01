@@ -235,7 +235,7 @@
         <div class="flex flex-col items-center gap-6">
             <div class="relative flex items-center justify-center">
                 <div class="loader-ring absolute"></div>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500 animate-pulse relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500 animate-pulse relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
             </div>
@@ -250,7 +250,7 @@
     <!-- Header -->
     <header class="glass-panel border-b border-slate-200 dark:border-white/10 p-4 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold flex items-center gap-3 bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-indigo-600">
+            <h1 class="text-2xl font-bold flex items-center gap-3 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                 <img src="assets/logo.jpg" alt="CropSwift Pro Logo" class="h-8 w-8 rounded-lg shadow-sm border border-slate-200">
                 CropSwift Pro
             </h1>
@@ -283,8 +283,8 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2">Target File Size</label>
                             <div class="flex gap-2">
-                                <input type="number" id="target-size" class="flex-1 bg-white border border-slate-300 rounded-lg p-3 text-slate-900 focus:ring-red-500 focus:border-red-500" placeholder="e.g. 100" value="100">
-                                <select id="size-unit" class="bg-white border border-slate-300 rounded-lg p-3 text-slate-900 focus:ring-red-500 focus:border-red-500">
+                                <input type="number" id="target-size" class="flex-1 bg-white border border-slate-300 rounded-lg p-3 text-slate-900 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. 100" value="100">
+                                <select id="size-unit" class="bg-white border border-slate-300 rounded-lg p-3 text-slate-900 focus:ring-blue-500 focus:border-blue-500">
                                     <option value="KB">KB</option>
                                     <option value="MB">MB</option>
                                 </select>
@@ -294,7 +294,7 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2">Advanced Options</label>
                             <label class="flex items-start gap-3 p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                                <input type="checkbox" id="allow-downscale" class="mt-1 w-4 h-4 text-red-600 border-slate-300 rounded focus:ring-red-500" checked>
+                                <input type="checkbox" id="allow-downscale" class="mt-1 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" checked>
                                 <div>
                                     <span class="block text-sm font-medium text-slate-800">Allow Downscaling</span>
                                     <span class="block text-xs text-slate-500">If compression alone isn't enough, slightly reduce image dimensions to meet the target size.</span>
@@ -308,9 +308,9 @@
                 <div>
                     <h2 class="text-xl font-semibold text-slate-900 mb-4">2. Select Files</h2>
                     <label id="drop-zone" for="file-upload" class="flex flex-col items-center justify-center w-full h-48 border-2 border-slate-300 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-all group relative overflow-hidden">
-                        <div class="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity drop-zone-overlay"></div>
+                        <div class="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity drop-zone-overlay"></div>
                         <div class="flex flex-col items-center justify-center pt-5 pb-6 z-10 text-center px-4 pointer-events-none">
-                            <svg class="w-12 h-12 mb-4 text-red-500 group-hover:scale-110 transition-transform drop-zone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                            <svg class="w-12 h-12 mb-4 text-blue-500 group-hover:scale-110 transition-transform drop-zone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                             <p class="mb-2 text-lg text-slate-700 drop-zone-text"><span class="font-bold text-slate-900">Click to browse</span> or drag & drop</p>
                             <p class="text-sm text-slate-500">Supports JPG, PNG, WEBP files (Max 50 images, 4MB each)</p>
                         </div>
@@ -318,7 +318,7 @@
                     </label>
                 </div>
                 
-                <button id="start-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl transition-all active:scale-[0.98] shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-lg tracking-wide disabled:shadow-none disabled:active:scale-100" disabled>
+                <button id="start-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all active:scale-[0.98] shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-lg tracking-wide disabled:shadow-none disabled:active:scale-100" disabled>
                     Upload Photos to Begin
                 </button>
             </div>
@@ -347,7 +347,7 @@
                         <h2 class="text-xl font-bold text-slate-800">Processing Queue</h2>
                         <div class="flex gap-3 items-center">
                             <span id="queue-counter" class="text-sm font-medium px-3 py-1 bg-slate-100 text-slate-600 rounded-lg">0 / 0</span>
-                            <button id="btn-cancel" class="text-sm text-red-600 font-medium hover:underline">Cancel</button>
+                            <button id="btn-cancel" class="text-sm text-blue-600 font-medium hover:underline">Cancel</button>
                         </div>
                     </div>
                     
@@ -373,7 +373,7 @@
 
             <!-- Footer -->
             <footer class="mt-auto pt-10 pb-2 w-full text-center text-sm text-slate-500 dark:text-gray-500">
-                Made with <span class="text-red-500 animate-pulse inline-block">♥</span> by <a href="https://skmeghwal.in" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 transition-colors font-medium hover:underline">SK Meghwal</a>
+                Made with <span class="text-blue-500 animate-pulse inline-block">♥</span> by <a href="https://skmeghwal.in" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 transition-colors font-medium hover:underline">SK Meghwal</a>
             </footer>
         </div>
     </main>
@@ -665,8 +665,8 @@
         }
 
         function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-        function highlight(e) { dropZone.classList.add('border-red-500', 'bg-slate-100'); dropZone.classList.remove('border-slate-300', 'bg-slate-50'); }
-        function unhighlight(e) { dropZone.classList.remove('border-red-500', 'bg-slate-100'); dropZone.classList.add('border-slate-300', 'bg-slate-50'); }
+        function highlight(e) { dropZone.classList.add('border-blue-500', 'bg-slate-100'); dropZone.classList.remove('border-slate-300', 'bg-slate-50'); }
+        function unhighlight(e) { dropZone.classList.remove('border-blue-500', 'bg-slate-100'); dropZone.classList.add('border-slate-300', 'bg-slate-50'); }
 
         if(startBtn) startBtn.addEventListener('click', startProcessing);
 
