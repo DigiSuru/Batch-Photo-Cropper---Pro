@@ -1166,6 +1166,11 @@
                 document.getElementById('done-text').textContent = "No images were cropped. You skipped or removed all files.";
             } else {
                 btnDownloadZip.classList.remove('hidden');
+                if (results.length === 1) {
+                    btnDownloadZip.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download Image`;
+                } else {
+                    btnDownloadZip.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download Compressed ZIP`;
+                }
             }
         }
 
@@ -1179,21 +1184,31 @@
             loadingText.classList.remove('hidden');
 
             try {
-                const zip = new JSZip();
-                
-                results.forEach((img) => {
-                    const base64Data = img.dataUrl.split(',')[1];
+                if (results.length === 1) {
+                    const img = results[0];
+                    const base64Data = img.dataUrl;
                     let finalName = img.finalName;
-                    // ensure extension
                     if (!finalName.toLowerCase().endsWith(img.extension)) {
                         finalName += img.extension;
                     }
-                    zip.file(finalName, base64Data, {base64: true});
-                });
+                    saveAs(base64Data, finalName);
+                } else {
+                    const zip = new JSZip();
+                    
+                    results.forEach((img) => {
+                        const base64Data = img.dataUrl.split(',')[1];
+                        let finalName = img.finalName;
+                        // ensure extension
+                        if (!finalName.toLowerCase().endsWith(img.extension)) {
+                            finalName += img.extension;
+                        }
+                        zip.file(finalName, base64Data, {base64: true});
+                    });
 
-                const content = await zip.generateAsync({type: "blob"});
-                const dateStr = new Date().toISOString().slice(0,10);
-                saveAs(content, `Cropped_Photos_${dateStr}.zip`);
+                    const content = await zip.generateAsync({type: "blob"});
+                    const dateStr = new Date().toISOString().slice(0,10);
+                    saveAs(content, `Cropped_Photos_${dateStr}.zip`);
+                }
                 
             } catch (err) {
                 console.error(err);

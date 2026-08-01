@@ -591,7 +591,14 @@
             
             if (processedResults.length > 0) {
                 headerStatus.textContent = 'Step 3: Download';
-                if(btnDownloadZip) btnDownloadZip.classList.remove('hidden');
+                if(btnDownloadZip) {
+                    btnDownloadZip.classList.remove('hidden');
+                    if (processedResults.length === 1) {
+                        btnDownloadZip.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download Image`;
+                    } else {
+                        btnDownloadZip.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download Compressed ZIP`;
+                    }
+                }
                 if(btnRestart) btnRestart.classList.remove('hidden');
             } else {
                 headerStatus.textContent = 'Cancelled';
@@ -674,17 +681,26 @@
                 if(zipLoadingText) zipLoadingText.classList.remove('hidden');
 
                 try {
-                    const zip = new JSZip();
-                    processedResults.forEach((res) => {
+                    if (processedResults.length === 1) {
+                        const res = processedResults[0];
                         const originalName = res.name;
                         const mime = res.blob.type;
                         const ext = mime === 'image/webp' ? '.webp' : '.jpg';
                         const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-                        zip.file(`${nameWithoutExt}_compressed${ext}`, res.blob);
-                    });
-                    const content = await zip.generateAsync({type: "blob"});
-                    const dateStr = new Date().toISOString().slice(0,10);
-                    saveAs(content, `Compressed_Photos_${dateStr}.zip`);
+                        saveAs(res.blob, `${nameWithoutExt}_compressed${ext}`);
+                    } else {
+                        const zip = new JSZip();
+                        processedResults.forEach((res) => {
+                            const originalName = res.name;
+                            const mime = res.blob.type;
+                            const ext = mime === 'image/webp' ? '.webp' : '.jpg';
+                            const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                            zip.file(`${nameWithoutExt}_compressed${ext}`, res.blob);
+                        });
+                        const content = await zip.generateAsync({type: "blob"});
+                        const dateStr = new Date().toISOString().slice(0,10);
+                        saveAs(content, `Compressed_Photos_${dateStr}.zip`);
+                    }
                 } catch (err) {
                     console.error(err);
                     showToast("Error creating ZIP archive.", 'error');
